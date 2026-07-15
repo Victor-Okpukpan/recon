@@ -1,0 +1,6 @@
+# Foundry
+cache/
+out/
+
+# Env
+.env
