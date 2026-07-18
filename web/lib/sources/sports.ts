@@ -1,3 +1,5 @@
+import { fetchWithRetry } from "../net";
+
 const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
 
 export interface ApiFootballEnvelope<T> {
@@ -51,7 +53,7 @@ async function apiFootballFetch<T>(path: string, params: Record<string, string |
     if (v !== undefined) url.searchParams.set(k, String(v));
   }
 
-  const res = await fetch(url, { headers: { "x-apisports-key": apiFootballKey() } });
+  const res = await fetchWithRetry(url, { headers: { "x-apisports-key": apiFootballKey() } });
   if (!res.ok) {
     throw new Error(`API-Football ${path} failed: ${res.status} ${res.statusText}`);
   }

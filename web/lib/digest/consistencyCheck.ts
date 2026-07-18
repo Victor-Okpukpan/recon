@@ -1,7 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { anthropic as client } from "../anthropicClient";
 import type { Claim, ContradictionPair } from "./types";
-
-const client = new Anthropic();
 
 const schema = {
   type: "object",
@@ -40,7 +38,10 @@ export async function checkConsistency(claims: Claim[]): Promise<ConsistencyChec
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
-    max_tokens: 8192,
+    // A contradiction-pair list is small structured output, not prose — 8192 was
+    // generous headroom left over from before claim counts were bounded upstream;
+    // shrinking it cuts worst-case request duration the same way extractClaims' does.
+    max_tokens: 4096,
     output_config: { format: { type: "json_schema", schema } },
     messages: [
       {

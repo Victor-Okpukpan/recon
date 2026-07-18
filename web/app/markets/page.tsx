@@ -9,19 +9,15 @@ import { MarketCardSkeleton } from "@/components/MarketCardSkeleton";
 import { cn } from "@/lib/utils";
 import type { PolymarketMarket, PolymarketPage } from "@/lib/polymarket/client";
 
-// Recon's demo scope is sports + politics (depth over breadth) — Polymarket applies
-// these two tags consistently as top-level categories, confirmed against live data.
-const SCOPE_TAGS = ["Politics", "Sports"];
-
-type CategoryFilter = "all" | "Politics" | "Sports";
-
-function isInScope(market: PolymarketMarket): boolean {
-  return SCOPE_TAGS.some((t) => market.tags?.includes(t));
-}
+// How many of the most frequent tags across the currently-fetched markets to offer
+// as filter pills — computed from live data every time, never a hardcoded category
+// list, since Polymarket's tags mix genuine categories with hundreds of narrow
+// sub-tags (specific states, dates, people) at no fixed taxonomy level.
+const MAX_CATEGORY_PILLS = 10;
 
 // Polymarket's sampling-markets page can return up to ~1000 raw markets in one batch,
-// far more in-scope (politics/sports) results than should ever render at once. Display
-// pages out of what's already been fetched before hitting the API again for more.
+// far more than should ever render at once. Display pages out of what's already been
+// fetched before hitting the API again for more.
 const DISPLAY_BATCH = 51;
 
 export default function MarketsPage() {
@@ -31,15 +27,14 @@ export default function MarketsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<CategoryFilter>("all");
+  const [category, setCategory] = useState<string>("all");
   const [visibleCount, setVisibleCount] = useState(DISPLAY_BATCH);
 
   // Re-syncs whenever the URL's ?category= actually changes (e.g. a footer link
   // clicked while already on this page) — a lazy useState initializer only runs on
   // first mount, so it can't react to a same-route navigation with new search params.
   useEffect(() => {
-    const fromUrl = searchParams.get("category");
-    setCategory(fromUrl === "Politics" || fromUrl === "Sports" ? fromUrl : "all");
+    setCategory(searchParams.get("category") ?? "all");
   }, [searchParams]);
 
   const loadPage = useCallback(async (nextCursor?: string) => {
@@ -53,8 +48,7 @@ export default function MarketsPage() {
       if (!Array.isArray(page.data)) {
         throw new Error("Markets response was missing its data array");
       }
-      const inScope = page.data.filter(isInScope);
-      setMarkets((prev) => (nextCursor ? [...prev, ...inScope] : inScope));
+      setMarkets((prev) => (nextCursor ? [...prev, ...page.data] : page.data));
       // Polymarket doesn't document a fixed "end of list" cursor sentinel — treat an
       // empty page as the real end signal instead of guessing at the cursor's shape.
       setCursor(page.data.length > 0 ? page.next_cursor : undefined);
@@ -68,6 +62,21 @@ export default function MarketsPage() {
   useEffect(() => {
     loadPage();
   }, [loadPage]);
+
+  const topTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of markets) {
+      for (const t of m.tags ?? []) {
+        counts.set(t, (counts.get(t) ?? 0) + 1);
+      }
+    }
+    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([tag]) => tag);
+    // "Sports" is pinned alongside "All" rather than left to pure frequency ranking —
+    // election coverage currently dominates Polymarket's tag volume badly enough that
+    // Sports doesn't make a frequency-ranked top 10 despite being a core category.
+    const rest = ranked.filter((t) => t !== "Sports").slice(0, MAX_CATEGORY_PILLS - 1);
+    return ranked.includes("Sports") ? ["Sports", ...rest] : rest;
+  }, [markets]);
 
   const filtered = useMemo(() => {
     return markets.filter((m) => {
@@ -101,7 +110,7 @@ export default function MarketsPage() {
     <main className="mx-auto w-full max-w-6xl space-y-6 p-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Markets</h1>
-        <p className="text-sm text-muted-foreground">Live from Polymarket — sports and politics. Open a market to preview and unlock Recon Digest.</p>
+        <p className="text-sm text-muted-foreground">Live from Polymarket. Open a market to preview and unlock Recon Digest.</p>
       </div>
 
       <input
@@ -112,7 +121,7 @@ export default function MarketsPage() {
       />
 
       <div className="flex flex-wrap gap-2">
-        {(["all", "Politics", "Sports"] as const).map((c) => (
+        {["all", ...topTags].map((c) => (
           <button
             key={c}
             onClick={() => setCategory(c)}
@@ -126,7 +135,14 @@ export default function MarketsPage() {
         ))}
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-destructive">{error}</p>
+          <Button variant="secondary" size="sm" className="rounded-full" onClick={() => loadPage(cursor)} disabled={loading}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {loading && markets.length === 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -149,7 +165,7 @@ export default function MarketsPage() {
                 ))}
               </div>
               <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                {m.tags?.filter((t) => SCOPE_TAGS.includes(t)).map((t) => (
+                {m.tags?.slice(0, 2).map((t) => (
                   <span key={t} className="rounded-full border border-white/10 px-2 py-0.5">
                     {t}
                   </span>
@@ -166,7 +182,7 @@ export default function MarketsPage() {
         <p className="text-sm text-muted-foreground">No markets match your filters.</p>
       )}
       {!loading && markets.length === 0 && !cursor && (
-        <p className="text-sm text-muted-foreground">No sports or political markets found in this batch.</p>
+        <p className="text-sm text-muted-foreground">No markets found in this batch.</p>
       )}
 
       {hasMoreToShow && (

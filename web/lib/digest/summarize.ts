@@ -1,7 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { anthropic as client } from "../anthropicClient";
 import type { Claim, ContradictionPair } from "./types";
-
-const client = new Anthropic();
 
 /**
  * Plain-language summary only — never a directional betting recommendation.

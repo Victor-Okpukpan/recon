@@ -1,3 +1,5 @@
+import { fetchWithRetry } from "../net";
+
 /**
  * Read-only Polymarket client. Polymarket is on Polygon; Monad is where Recon
  * Access lives. This file must never import anything from lib/contracts to
@@ -6,27 +8,6 @@
  */
 const CLOB_HOST = "https://clob.polymarket.com";
 const INITIAL_CURSOR = "MA==";
-
-// This host environment's outbound connections to clob.polymarket.com are currently
-// slow enough (confirmed directly, repeatedly: ~9s just to establish a connection)
-// that Node's fetch default connect timeout gives up before it completes, even though
-// the request itself would have succeeded. A longer explicit timeout plus a couple of
-// retries (for genuinely transient failures) fixes this without masking a real outage.
-const FETCH_TIMEOUT_MS = 15_000;
-const FETCH_RETRIES = 2;
-
-async function fetchWithRetry(url: string | URL): Promise<Response> {
-  let lastErr: unknown;
-  for (let attempt = 0; attempt <= FETCH_RETRIES; attempt++) {
-    try {
-      return await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-    } catch (err) {
-      lastErr = err;
-      if (attempt < FETCH_RETRIES) await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
-    }
-  }
-  throw lastErr;
-}
 
 export interface PolymarketToken {
   token_id: string;

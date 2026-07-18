@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkHasAccess } from "@/lib/contracts/reconAccess";
 import { getMarketDigest } from "@/lib/digest/getMarketDigest";
 import { isAllowlisted } from "@/lib/allowlist";
+import { describeAnthropicError } from "@/lib/anthropicClient";
 
 const HEX_ADDRESS_RE = /^0x[0-9a-fA-F]+$/;
 
@@ -28,6 +29,6 @@ export async function GET(request: NextRequest) {
     const digest = await getMarketDigest(conditionId);
     return NextResponse.json(digest);
   } catch (err) {
-    return NextResponse.json({ error: `Failed to build digest: ${(err as Error).message}` }, { status: 502 });
+    return NextResponse.json({ error: `Failed to build digest: ${describeAnthropicError(err)}` }, { status: 502 });
   }
 }

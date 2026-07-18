@@ -1,7 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { anthropic as client } from "../anthropicClient";
 import type { Claim, DigestSource } from "./types";
-
-const client = new Anthropic();
 
 const schema = {
   type: "object",
@@ -33,7 +31,11 @@ export async function extractClaims(sources: DigestSource[]): Promise<Claim[]> {
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
-    max_tokens: 16000,
+    // A realistic claims list for ~10 sources capped at 1800 chars each doesn't need
+    // anywhere near 16k tokens — a smaller ceiling means a smaller worst-case request
+    // duration, which matters directly for how exposed a single call is to a
+    // network hiccup mid-generation, not just for cost.
+    max_tokens: 4096,
     output_config: { format: { type: "json_schema", schema } },
     messages: [
       {

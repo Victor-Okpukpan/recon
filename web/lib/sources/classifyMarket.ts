@@ -1,6 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
-
-const client = new Anthropic();
+import { anthropic as client } from "../anthropicClient";
 
 export type MarketClassification =
   | { category: "sports"; teamAName: string; teamBName: string; sport: string }

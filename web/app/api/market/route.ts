@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getMarket } from "@/lib/polymarket/client";
 import { getOrSet } from "@/lib/cache";
 
-const MARKET_CACHE_TTL_MS = 60 * 1000;
+// Must match lib/digest/getMarketDigest.ts's MARKET_CACHE_TTL_MS — both read/write
+// the same `market:${conditionId}` cache key.
+const MARKET_CACHE_TTL_MS = 60 * 60 * 1000;
 
 export async function GET(request: NextRequest) {
   const conditionId = request.nextUrl.searchParams.get("conditionId");

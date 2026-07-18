@@ -1,3 +1,5 @@
+import { fetchWithRetry } from "../net";
+
 const EXA_SEARCH_URL = "https://api.exa.ai/search";
 
 export interface ExaNewsResult {
@@ -28,7 +30,7 @@ function exaApiKey(): string {
  * category-specific staleness window before deciding Sufficient vs Inconclusive.
  */
 export async function searchNews(query: string, opts: { startPublishedDate: string; numResults?: number }): Promise<ExaNewsResult[]> {
-  const res = await fetch(EXA_SEARCH_URL, {
+  const res = await fetchWithRetry(EXA_SEARCH_URL, {
     method: "POST",
     headers: {
       "x-api-key": exaApiKey(),

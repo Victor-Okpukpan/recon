@@ -8,8 +8,11 @@ import { summarizeDigest } from "./summarize";
 import { deriveLeaning, type Leaning } from "./leaning";
 import type { Claim, ContradictionPair } from "./types";
 
-const SOURCES_CACHE_TTL_MS = 5 * 60 * 1000;
-const DIGEST_CACHE_TTL_MS = 15 * 60 * 1000;
+// Deliberately generous: a Digest recompute costs several real Claude API calls, and
+// news/market sentiment doesn't meaningfully shift minute-to-minute for most markets.
+const MARKET_CACHE_TTL_MS = 60 * 60 * 1000;
+const SOURCES_CACHE_TTL_MS = 30 * 60 * 1000;
+const DIGEST_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 
 export interface DigestSourceSummary {
   id: string;
@@ -46,7 +49,11 @@ function toSourceSummary(s: { id: string; kind: "sports" | "general"; label: str
  */
 export async function getMarketDigest(conditionId: string): Promise<MarketDigest> {
   return getOrSet(`digest:${conditionId}`, DIGEST_CACHE_TTL_MS, async () => {
-    const market = await getMarket(conditionId);
+    // Was an uncached, fresh Polymarket call on every single digest attempt (including
+    // every retry) — one more real point of failure exposure to this sandbox's network
+    // flakiness for data that barely changes. Caching it removes that entirely once any
+    // one attempt succeeds.
+    const market = await getOrSet(`market:${conditionId}`, MARKET_CACHE_TTL_MS, () => getMarket(conditionId));
     const resolved = await getOrSet(`sources:${conditionId}`, SOURCES_CACHE_TTL_MS, () => resolveMarketSources(market));
     const sources = resolved.sources.map(toSourceSummary);
 

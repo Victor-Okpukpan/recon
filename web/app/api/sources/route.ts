@@ -3,8 +3,11 @@ import { getMarket } from "@/lib/polymarket/client";
 import { resolveMarketSources } from "@/lib/sources/orchestrate";
 import { evaluateThreshold } from "@/lib/digest/threshold";
 import { getOrSet } from "@/lib/cache";
+import { describeAnthropicError } from "@/lib/anthropicClient";
 
-const SOURCES_CACHE_TTL_MS = 5 * 60 * 1000;
+// Must match lib/digest/getMarketDigest.ts's SOURCES_CACHE_TTL_MS — both read/write
+// the same `sources:${conditionId}` cache key.
+const SOURCES_CACHE_TTL_MS = 30 * 60 * 1000;
 
 export async function GET(request: NextRequest) {
   const conditionId = request.nextUrl.searchParams.get("conditionId");
@@ -28,6 +31,6 @@ export async function GET(request: NextRequest) {
       ...threshold,
     });
   } catch (err) {
-    return NextResponse.json({ error: `Failed to fetch sources: ${(err as Error).message}` }, { status: 502 });
+    return NextResponse.json({ error: `Failed to fetch sources: ${describeAnthropicError(err)}` }, { status: 502 });
   }
 }

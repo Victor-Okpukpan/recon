@@ -1,8 +1,15 @@
 # ReconAccess
 
-Onchain paywall for Recon Digest. Per-market unlock, priced in USD cents and paid
-in native MON, converted at call time via a Pyth pull-oracle update (no hardcoded
-MON/USD rate). See `src/ReconAccess.sol` for the full design notes.
+Onchain paywall for Recon Digest, deployed on Monad testnet. Per-market unlock,
+priced in USD cents and paid in native MON, converted at call time via a Pyth
+pull-oracle update (no hardcoded MON/USD rate). See `src/ReconAccess.sol` for the
+full design notes.
+
+Both the unlock price (`setPriceUsdCents`) and the Pyth contract address
+(`setPythContract`) are owner-settable post-deploy, not immutable — the latter
+specifically because Pyth's own EVM contracts go through periodic upgrades (see the
+gotcha below), and needing a full redeploy every time that happens would also wipe
+every existing payment receipt.
 
 ## Build & test
 
@@ -46,7 +53,7 @@ forge verify-contract "$ADDR" src/ReconAccess.sol:ReconAccess \
 cat out/ReconAccess.sol/ReconAccess.json | jq '.metadata' > /tmp/metadata.json
 
 ARGS=$(cast abi-encode "constructor(address,bytes32,uint256,address)" \
-  0xFC6bd9F9f0c6481c6Af3A7Eb46b296A5B85ed379 \
+  0x2880aB155794e7179c9eE2e38200202908C17B43 \
   0x31491744e2dbf6df7fcf4ac0820d18a609b49076d45066d3568424e62f686cd1 \
   <PRICE_USD_CENTS> <OWNER_ADDRESS>)
 
@@ -65,9 +72,22 @@ EOF
 
 ## Pyth references used by this contract
 
-- Pyth contract (Monad testnet, upgraded address): `0xFC6bd9F9f0c6481c6Af3A7Eb46b296A5B85ed379`
+- Pyth contract (Monad testnet, **current** address — not the "upgraded" one Pyth's
+  docs also list, see gotcha below): `0x2880aB155794e7179c9eE2e38200202908C17B43`
 - MON/USD price feed id (Pyth Stable channel, matches the address above): `0x31491744e2dbf6df7fcf4ac0820d18a609b49076d45066d3568424e62f686cd1`
 - Price update data for a `payForAccess` call must be fetched off-chain from Hermes
   (`https://hermes.pyth.network/v2/updates/price/latest?ids[]=<feed id>`) and passed
   as `bytes[]` — this is what the frontend's Monad contract client does before
   calling `payForAccess`.
+
+## Gotcha: two Pyth addresses, only one actually works right now
+
+Pyth's docs list two contract addresses for Monad testnet: a "current" one and an
+"upgraded" one recommended for new integrations. **Use the current one.** The
+upgraded address is deployed on-chain but isn't actually synced with a valid
+Wormhole guardian set until Pyth's own scheduled upgrade goes live (Aug 18, 2026 at
+time of writing) — pointing at it makes every `payForAccess` call revert with
+Wormhole's `InvalidWormholeVaa` ("invalid guardian set"), confirmed by tracing a
+real failed testnet transaction. If that upgrade has since gone live and you want
+to switch, call `setPythContract(newAddress)` as the contract owner rather than
+redeploying.

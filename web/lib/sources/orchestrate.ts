@@ -81,7 +81,11 @@ async function resolveGeneralSources(searchQuery: string): Promise<DigestSource[
     label: a.title,
     url: a.url,
     publishedAt: a.publishedDate,
-    content: a.text.slice(0, 3000),
+    // Capped well below the full article: claims worth extracting are almost always
+    // front-loaded (standard inverted-pyramid journalism), and a smaller prompt means
+    // a faster, shorter-lived request — directly reducing how exposed a single Digest
+    // computation is to a mid-request network hiccup, on top of the token savings.
+    content: a.text.slice(0, 1800),
   }));
 }
 

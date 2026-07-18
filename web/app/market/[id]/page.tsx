@@ -58,6 +58,12 @@ export default function MarketSessionPage({ params }: { params: Promise<{ id: st
   const [preview, setPreview] = useState<SourcesPreview | null>(null);
   const [priceSeries, setPriceSeries] = useState<PriceSeries[]>([]);
   const [hasAccess, setHasAccess] = useState(false);
+  // Set as soon as the real onchain hasAccess() check comes back true — independent of
+  // whether the Digest fetch itself then succeeds, so a wallet that has genuinely paid
+  // is never shown "Pay to unlock Digest" again just because that follow-up load failed
+  // (which would risk a second, reverting payForAccess transaction if clicked).
+  const [accessConfirmed, setAccessConfirmed] = useState(false);
+  const [digestLoading, setDigestLoading] = useState(false);
   const [payingLong, setPayingLong] = useState(false);
   const [digest, setDigest] = useState<MarketDigest | null>(null);
 
@@ -105,11 +111,24 @@ export default function MarketSessionPage({ params }: { params: Promise<{ id: st
 
   const loadDigest = useCallback(async () => {
     if (!address) return;
-    const res = await fetch(`/api/digest?conditionId=${conditionId}&wallet=${address}`);
-    if (res.ok) {
+    setDigestLoading(true);
+    try {
+      const res = await fetch(`/api/digest?conditionId=${conditionId}&wallet=${address}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to load Digest");
+      }
       setDigest(await res.json());
       setHasAccess(true);
       setStage("unlocked");
+    } catch (err) {
+      // A wallet that has genuinely paid must never be silently left staring at
+      // "Pay to unlock Digest" with no explanation — surface the real failure so a
+      // transient network hiccup reads as "something went wrong, try again" instead
+      // of looking like the payment didn't count.
+      showErrorToast(err);
+    } finally {
+      setDigestLoading(false);
     }
   }, [conditionId, address]);
 
@@ -119,10 +138,12 @@ export default function MarketSessionPage({ params }: { params: Promise<{ id: st
       .then((r) => r.json())
       .then((d: { hasAccess?: boolean }) => {
         if (d.hasAccess) {
+          setAccessConfirmed(true);
           recordPaidMarket(address, conditionId);
           loadDigest();
         }
-      });
+      })
+      .catch((err) => showErrorToast(err));
   }, [isConnected, address, conditionId, stage, loadDigest]);
 
   async function handlePay() {
@@ -288,8 +309,21 @@ export default function MarketSessionPage({ params }: { params: Promise<{ id: st
         <Button className="rounded-full" disabled={authenticated} onClick={login}>
           {authenticated ? "Connecting…" : "Connect wallet to unlock Digest"}
         </Button>
-      ) : hasAccess ? (
-        <p className="text-sm text-muted-foreground">Loading your unlocked Digest…</p>
+      ) : accessConfirmed ? (
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-muted-foreground">
+            {hasAccess
+              ? "Loading your unlocked Digest…"
+              : digestLoading
+                ? "Loading Digest — markets with many sources can take a minute…"
+                : "This market is unlocked, but the Digest failed to load."}
+          </p>
+          {!hasAccess && (
+            <Button variant="secondary" size="sm" className="rounded-full" onClick={loadDigest} disabled={digestLoading}>
+              {digestLoading ? "Retrying…" : "Retry"}
+            </Button>
+          )}
+        </div>
       ) : (
         <Button className="rounded-full" onClick={handlePay} disabled={isPaying || stage === "paying"}>
           {isPaying || stage === "paying"

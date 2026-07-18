@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# local persistent API-response cache (lib/cache.ts) — dev-only, never shared
+/.cache/
+
 # production
 /build
 
