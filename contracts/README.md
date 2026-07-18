@@ -1,15 +1,8 @@
 # ReconAccess
 
-Onchain paywall for Recon Digest, deployed on Monad testnet. Per-market unlock,
-priced in USD cents and paid in native MON, converted at call time via a Pyth
-pull-oracle update (no hardcoded MON/USD rate). See `src/ReconAccess.sol` for the
-full design notes.
+Onchain paywall for Recon Digest, deployed on Monad testnet. Per-market unlock, priced in USD cents and paid in native MON, converted at call time via a Pyth pull-oracle update (no hardcoded MON/USD rate). See `src/ReconAccess.sol` for the full design notes.
 
-Both the unlock price (`setPriceUsdCents`) and the Pyth contract address
-(`setPythContract`) are owner-settable post-deploy, not immutable — the latter
-specifically because Pyth's own EVM contracts go through periodic upgrades (see the
-gotcha below), and needing a full redeploy every time that happens would also wipe
-every existing payment receipt.
+Both the unlock price (`setPriceUsdCents`) and the Pyth contract address (`setPythContract`) are owner-settable post-deploy, not immutable — the latter specifically because Pyth's own EVM contracts go through periodic upgrades (see the gotcha below), and needing a full redeploy every time that happens would also wipe every existing payment receipt.
 
 ## Current deployment
 
@@ -88,12 +81,4 @@ EOF
 
 ## Gotcha: two Pyth addresses, only one actually works right now
 
-Pyth's docs list two contract addresses for Monad testnet: a "current" one and an
-"upgraded" one recommended for new integrations. **Use the current one.** The
-upgraded address is deployed on-chain but isn't actually synced with a valid
-Wormhole guardian set until Pyth's own scheduled upgrade goes live (Aug 18, 2026 at
-time of writing) — pointing at it makes every `payForAccess` call revert with
-Wormhole's `InvalidWormholeVaa` ("invalid guardian set"), confirmed by tracing a
-real failed testnet transaction. If that upgrade has since gone live and you want
-to switch, call `setPythContract(newAddress)` as the contract owner rather than
-redeploying.
+Pyth's docs list two contract addresses for Monad testnet: a "current" one and an "upgraded" one recommended for new integrations. **Use the current one.** The upgraded address is deployed on-chain but isn't actually synced with a valid Wormhole guardian set until Pyth's own scheduled upgrade goes live (Aug 18, 2026 at time of writing) — pointing at it makes every `payForAccess` call revert with Wormhole's `InvalidWormholeVaa` ("invalid guardian set"), confirmed by tracing a real failed testnet transaction. If that upgrade has since gone live and you want to switch, call `setPythContract(newAddress)` as the contract owner rather than redeploying.
