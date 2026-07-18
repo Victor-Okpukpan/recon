@@ -1,5 +1,7 @@
 # Recon
 
+**Live**: [recon-nu-eight.vercel.app](https://recon-nu-eight.vercel.app/)
+
 Recon is a research assistant that sits in front of a Polymarket market. Before committing capital, Recon surfaces current, relevant sources on the underlying question, generates an AI summary of what those sources say, and explicitly says when evidence is too thin to support a conclusion.
 
 Full-depth research unlocks per market through a small onchain payment on Monad testnet — that payment gate is the project's onchain component for the Monad Spark hackathon (BuildAnything track).
@@ -39,6 +41,7 @@ contracts/   ReconAccess.sol (Foundry) — see contracts/README.md
 
 ## Deployment
 
+- **App**: [recon-nu-eight.vercel.app](https://recon-nu-eight.vercel.app/)
 - **Network**: Monad Testnet, chain id `10143`
 - **Contract**: `ReconAccess` at [`0x48b6b86fB228451421d0AB1548C2902488ACA998`](https://testnet.monadvision.com/address/0x48b6b86fB228451421d0AB1548C2902488ACA998) (verified)
 
