@@ -11,6 +11,11 @@ specifically because Pyth's own EVM contracts go through periodic upgrades (see 
 gotcha below), and needing a full redeploy every time that happens would also wipe
 every existing payment receipt.
 
+## Current deployment
+
+- **Network**: Monad Testnet, chain id `10143`
+- **Contract**: [`0x48b6b86fB228451421d0AB1548C2902488ACA998`](https://testnet.monadvision.com/address/0x48b6b86fB228451421d0AB1548C2902488ACA998) — verified
+
 ## Build & test
 
 ```shell
@@ -50,7 +55,8 @@ forge test
 ADDR=<deployed address>
 forge verify-contract "$ADDR" src/ReconAccess.sol:ReconAccess \
   --chain 10143 --show-standard-json-input > /tmp/standard-input.json
-cat out/ReconAccess.sol/ReconAccess.json | jq '.metadata' > /tmp/metadata.json
+# python3 instead of jq — no extra install needed, jq isn't guaranteed to be present.
+python3 -c "import json; print(json.dumps(json.load(open('out/ReconAccess.sol/ReconAccess.json'))['metadata']))" > /tmp/metadata.json
 
 ARGS=$(cast abi-encode "constructor(address,bytes32,uint256,address)" \
   0x2880aB155794e7179c9eE2e38200202908C17B43 \
@@ -62,7 +68,7 @@ curl -X POST https://agents.devnads.com/v1/verify -H "Content-Type: application/
   "chainId": 10143,
   "contractAddress": "$ADDR",
   "contractName": "src/ReconAccess.sol:ReconAccess",
-  "compilerVersion": "v0.8.34+commit.<fill-from-forge---version>",
+  "compilerVersion": "v<fill from /tmp/metadata.json's .compiler.version, e.g. v0.8.34+commit.80d5c536>",
   "standardJsonInput": $(cat /tmp/standard-input.json),
   "foundryMetadata": $(cat /tmp/metadata.json),
   "constructorArgs": "${ARGS#0x}"
