@@ -30,7 +30,7 @@ export default function LandingPage() {
         <p className="mx-auto max-w-2xl text-base text-muted-foreground">
           Recon sits in front of any Polymarket question and surfaces what current sources actually
           say — injuries, head-to-head history, breaking news — with an honest{" "}
-          <span className="text-foreground">Inconclusive</span> when there isn&apos;t enough to go on.
+          <span className="text-foreground">Inconclusive </span> when there isn&apos;t enough to go on.
         </p>
         <div>
           <Link href="/markets" className={buttonVariants({ size: "lg", className: "rounded-full px-8" })}>
