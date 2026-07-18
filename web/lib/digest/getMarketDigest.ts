@@ -2,8 +2,7 @@ import { getMarket } from "../polymarket/client";
 import { resolveMarketSources } from "../sources/orchestrate";
 import { getOrSet } from "../cache";
 import { evaluateThreshold, type ThresholdResult } from "./threshold";
-import { extractClaims } from "./extractClaims";
-import { checkConsistency } from "./consistencyCheck";
+import { extractClaimsAndConsistency } from "./extractClaimsAndConsistency";
 import { summarizeDigest } from "./summarize";
 import { deriveLeaning, type Leaning } from "./leaning";
 import type { Claim, ContradictionPair } from "./types";
@@ -71,12 +70,11 @@ export async function getMarketDigest(conditionId: string): Promise<MarketDigest
       };
     }
 
-    const claims = await extractClaims(resolved.sources);
-    const consistency = await checkConsistency(claims);
+    const { claims, contradictions, contradictionRate } = await extractClaimsAndConsistency(resolved.sources);
     const finalThreshold = evaluateThreshold({
       kind: resolved.category,
       sources: resolved.sources,
-      contradictionRate: consistency.contradictionRate,
+      contradictionRate,
     });
 
     let summary = "";
@@ -84,8 +82,8 @@ export async function getMarketDigest(conditionId: string): Promise<MarketDigest
     if (finalThreshold.status === "sufficient") {
       const outcomes = market.tokens.map((t) => t.outcome);
       [summary, leaning] = await Promise.all([
-        summarizeDigest(market.question, claims, consistency.contradictions),
-        deriveLeaning(market.question, outcomes, claims, consistency.contradictions),
+        summarizeDigest(market.question, claims, contradictions),
+        deriveLeaning(market.question, outcomes, claims, contradictions),
       ]);
     }
 
@@ -95,7 +93,7 @@ export async function getMarketDigest(conditionId: string): Promise<MarketDigest
       sources,
       threshold: finalThreshold,
       claims,
-      contradictions: consistency.contradictions,
+      contradictions,
       summary,
       leaning,
     };

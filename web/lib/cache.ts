@@ -1,3 +1,4 @@
+import { Redis } from "@upstash/redis";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -8,13 +9,21 @@ interface CacheEntry<T> {
 
 const store = new Map<string, CacheEntry<unknown>>();
 
-// Local-dev-only persistence: a fresh Digest recompute is several real Claude API
-// calls (classification, claim extraction, consistency check, summary, leaning), so
-// losing that cache to a `next dev` restart burns real API credits for no reason.
-// This does NOT help in a serverless production deployment — there's no persistent
-// filesystem between invocations there, so it silently degrades to in-memory-only in
-// that environment. A KV store (Vercel KV, Upstash Redis) would be the real fix if
-// this ships to serverless production.
+// Upstash Redis (via Vercel's marketplace integration — env vars keep the legacy
+// KV_ prefix for backward compatibility with @vercel/kv) when connected; this is the
+// real, shared-across-invocations cache for a serverless deployment, where neither an
+// in-memory Map nor the local disk cache below survives between function invocations.
+const redis =
+  process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
+    ? new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
+    : null;
+
+// Local-dev-only fallback, used when no Redis connection is configured: a fresh Digest
+// recompute is several real Claude API calls (classification, claim extraction +
+// consistency, summary, leaning), so losing that cache to a `next dev` restart burns
+// real API credits for no reason. This does NOT help in a serverless production
+// deployment without Redis configured — there's no persistent filesystem between
+// invocations there, so it would silently degrade to in-memory-only in that case.
 const CACHE_DIR = join(process.cwd(), ".cache");
 
 function cacheFilePath(key: string): string {
@@ -38,12 +47,26 @@ async function writeToDisk<T>(key: string, entry: CacheEntry<T>): Promise<void> 
   }
 }
 
-/** Per-key cache with a staleness timer. Returns the cached value if still fresh (checking
- * memory first, then disk), otherwise recomputes via `fn` and caches the result both ways. */
+/** Per-key cache with a staleness timer. Checks memory first (fast path within a single
+ * warm instance), then Redis if connected, otherwise the local disk cache — then
+ * recomputes via `fn` and writes the result back to whichever backend is active. */
 export async function getOrSet<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
   const memEntry = store.get(key) as CacheEntry<T> | undefined;
   if (memEntry && memEntry.expiresAt > Date.now()) {
     return memEntry.value;
+  }
+
+  if (redis) {
+    const cached = await redis.get<T>(key);
+    if (cached !== null) {
+      store.set(key, { value: cached, expiresAt: Date.now() + ttlMs });
+      return cached;
+    }
+
+    const value = await fn();
+    store.set(key, { value, expiresAt: Date.now() + ttlMs });
+    await redis.set(key, value, { px: ttlMs });
+    return value;
   }
 
   const diskEntry = await readFromDisk<T>(key);
@@ -61,4 +84,5 @@ export async function getOrSet<T>(key: string, ttlMs: number, fn: () => Promise<
 
 export function invalidate(key: string): void {
   store.delete(key);
+  if (redis) void redis.del(key);
 }

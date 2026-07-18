@@ -45,6 +45,7 @@ Open http://localhost:3000.
 | `NEXT_PUBLIC_RECON_ACCESS_ADDRESS` | `ReconAccess` deployment address — see `../contracts/README.md` |
 | `NEXT_PUBLIC_PRIVY_APP_ID` | Privy Dashboard (dashboard.privy.io) — create an app, copy its App ID |
 | `RECON_ALLOWLISTED_WALLETS` | Optional, comma-separated. Wallets that skip payment during testing — layered on top of the real onchain check, never a substitute for it |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional. Upstash Redis (e.g. via Vercel's marketplace integration — auto-injected once connected). Without these, caching falls back to a local-disk cache that only helps `next dev`, not a real serverless deployment — see below |
 
 **One manual step Privy requires**: enabling login methods (Google, Apple, Discord,
 Twitter/X, Farcaster) happens in the Privy Dashboard under "Login Methods," not in
@@ -77,15 +78,27 @@ npm run dev        # dev server (Turbopack)
   through this fix. This is a process-wide setting — it needs an actual dev-server
   restart to take effect if changed, not just a file save.
 - `lib/anthropicClient.ts` is a single shared, hardened Claude client used by every
-  Digest step (classification, claim extraction, consistency check, summary, leaning)
-  instead of five separate instances. `describeAnthropicError()` there distinguishes
-  a real "out of API credits" failure from a generic connection error, since the two
-  look similar otherwise but mean very different things.
-- Caching (`lib/cache.ts`) is two-layered: an in-memory `Map` plus a JSON file per key
-  under `.cache/` (gitignored), so a `next dev` restart doesn't throw away an already-
-  computed Digest — a fresh one costs several real Claude API calls. This is local-dev
-  convenience only: a serverless production deployment has no persistent filesystem
-  between invocations, so it silently degrades to in-memory-only there. Current TTLs:
-  market data 1 hour, sources 30 minutes, full Digest (including "Recon's read")
-  2 hours — deliberately generous, since news/market sentiment doesn't meaningfully
-  shift minute-to-minute and recomputing is the expensive part.
+  Digest step (classification, claim extraction + consistency check combined, summary,
+  leaning) instead of a separate instance per step. `describeAnthropicError()` there
+  distinguishes a real "out of API credits" failure from a generic connection error,
+  since the two look similar otherwise but mean very different things.
+  `lib/digest/extractClaimsAndConsistency.ts` merges what used to be two sequential
+  Claude calls into one — the Digest pipeline is 3 sequential hops (classify → extract
+  claims + check consistency → summary/leaning in parallel), not 4, both for speed and
+  to stay well under the `maxDuration` above.
+- Caching (`lib/cache.ts`) checks an in-memory `Map` first (fast path within a single
+  warm instance), then falls through to whichever persistent backend is configured:
+  Upstash Redis if `KV_REST_API_URL`/`KV_REST_API_TOKEN` are set (the only option that
+  actually persists across serverless invocations — this is what production should
+  use), otherwise a JSON file per key under `.cache/` (gitignored; local-dev
+  convenience only, so a `next dev` restart doesn't throw away an already-computed
+  Digest — a fresh one costs several real Claude API calls). Current TTLs: market data
+  1 hour, sources 30 minutes, full Digest (including "Recon's read") 2 hours —
+  deliberately generous, since news/market sentiment doesn't meaningfully shift
+  minute-to-minute and recomputing is the expensive part.
+- `app/api/digest/route.ts` and `app/api/sources/route.ts` set `export const
+  maxDuration = 60` — a fresh Digest chains a few sequential Claude calls
+  (classification, claim extraction + consistency, summary/leaning) that can
+  legitimately take longer than a serverless platform's default execution timeout for
+  a content-heavy market. 60s is Vercel Hobby's ceiling; raise it if deployed on a plan
+  that allows more.

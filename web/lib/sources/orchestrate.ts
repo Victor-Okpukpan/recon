@@ -73,7 +73,10 @@ async function resolveSportsSources(teamAName: string, teamBName: string): Promi
 
 async function resolveGeneralSources(searchQuery: string): Promise<DigestSource[]> {
   const windowStart = new Date(Date.now() - GENERAL_SEARCH_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const articles = await searchNews(searchQuery, { startPublishedDate: windowStart, numResults: 10 });
+  // 7, not 10: still comfortably above the "sufficient" source-count threshold (3),
+  // but a meaningfully smaller prompt for the extraction call that follows — every
+  // source added there is real wall-clock time against a serverless execution limit.
+  const articles = await searchNews(searchQuery, { startPublishedDate: windowStart, numResults: 7 });
 
   return articles.map((a) => ({
     id: a.id,
@@ -85,7 +88,7 @@ async function resolveGeneralSources(searchQuery: string): Promise<DigestSource[
     // front-loaded (standard inverted-pyramid journalism), and a smaller prompt means
     // a faster, shorter-lived request — directly reducing how exposed a single Digest
     // computation is to a mid-request network hiccup, on top of the token savings.
-    content: a.text.slice(0, 1800),
+    content: a.text.slice(0, 1200),
   }));
 }
 

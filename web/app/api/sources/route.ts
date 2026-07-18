@@ -9,6 +9,10 @@ import { describeAnthropicError } from "@/lib/anthropicClient";
 // the same `sources:${conditionId}` cache key.
 const SOURCES_CACHE_TTL_MS = 30 * 60 * 1000;
 
+// Source resolution calls Claude (classification) plus Exa/API-Football — same
+// serverless-timeout reasoning as /api/digest.
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const conditionId = request.nextUrl.searchParams.get("conditionId");
   if (!conditionId) {

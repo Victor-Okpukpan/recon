@@ -6,6 +6,13 @@ import { describeAnthropicError } from "@/lib/anthropicClient";
 
 const HEX_ADDRESS_RE = /^0x[0-9a-fA-F]+$/;
 
+// A fresh Digest chains several sequential Claude calls (classification, claim
+// extraction, consistency check, summary + leaning) and can genuinely take
+// 30-90s+ for a content-heavy market — well past a serverless platform's default
+// function timeout. 60s is the ceiling Vercel allows on its Hobby plan; raise this
+// if deployed on a plan that allows more.
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const conditionId = request.nextUrl.searchParams.get("conditionId");
   const wallet = request.nextUrl.searchParams.get("wallet");
