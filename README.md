@@ -66,7 +66,7 @@ contracts/   ReconAccess.sol (Foundry) — see contracts/README.md
 ## Deployment
 
 - **Network**: Monad Testnet, chain id `10143`
-- **Contract**: `ReconAccess` at `0x48b6b86fB228451421d0AB1548C2902488ACA998`
+- **Contract**: `ReconAccess` at [`0x48b6b86fB228451421d0AB1548C2902488ACA998`](https://testnet.monadvision.com/address/0x48b6b86fB228451421d0AB1548C2902488ACA998) (verified)
 
 ## Getting started
 

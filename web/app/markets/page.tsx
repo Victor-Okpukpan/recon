@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { OutcomeBadge } from "@/components/OutcomeBadge";
 import { MarketCardSkeleton } from "@/components/MarketCardSkeleton";
@@ -21,6 +21,34 @@ const MAX_CATEGORY_PILLS = 10;
 const DISPLAY_BATCH = 51;
 
 export default function MarketsPage() {
+  return (
+    <Suspense fallback={<MarketsPageFallback />}>
+      <MarketsPageContent />
+    </Suspense>
+  );
+}
+
+// useSearchParams() opts the page out of static rendering unless it's wrapped in a
+// Suspense boundary — Vercel's production build enforces this strictly even though a
+// local `next build` didn't surface it. This fallback mirrors the real initial-load
+// skeleton state so there's no flash of a differently-shaped placeholder.
+function MarketsPageFallback() {
+  return (
+    <main className="mx-auto w-full max-w-6xl space-y-6 p-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Markets</h1>
+        <p className="text-sm text-muted-foreground">Live from Polymarket. Open a market to preview and unlock Recon Digest.</p>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <MarketCardSkeleton key={i} />
+        ))}
+      </div>
+    </main>
+  );
+}
+
+function MarketsPageContent() {
   const searchParams = useSearchParams();
   const [markets, setMarkets] = useState<PolymarketMarket[]>([]);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
