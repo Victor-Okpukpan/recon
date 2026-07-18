@@ -16,20 +16,18 @@ interface ExaSearchResponse {
 function exaApiKey(): string {
   const key = process.env.EXA_API_KEY;
   if (!key) {
-    throw new Error("EXA_API_KEY is not set — cannot fetch politics sources without a live API key");
+    throw new Error("EXA_API_KEY is not set — cannot fetch news sources without a live API key");
   }
   return key;
 }
 
 /**
  * Searches Exa's news category with full article text returned inline, filtered to
- * publications after `startPublishedDate` — the caller applies the category-specific
- * staleness window (politics: 14 days) before deciding Sufficient vs Inconclusive.
+ * publications after `startPublishedDate` — works for any topic (politics, crypto,
+ * business, entertainment, etc.), not just politics. The caller applies the
+ * category-specific staleness window before deciding Sufficient vs Inconclusive.
  */
-export async function searchPoliticalNews(
-  query: string,
-  opts: { startPublishedDate: string; numResults?: number }
-): Promise<ExaNewsResult[]> {
+export async function searchNews(query: string, opts: { startPublishedDate: string; numResults?: number }): Promise<ExaNewsResult[]> {
   const res = await fetch(EXA_SEARCH_URL, {
     method: "POST",
     headers: {

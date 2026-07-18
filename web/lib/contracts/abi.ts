@@ -1,0 +1,170 @@
+export const reconAccessAbi = [
+  {
+    type: "constructor",
+    inputs: [
+      { name: "pythContract", type: "address", internalType: "address" },
+      { name: "monUsdPriceId", type: "bytes32", internalType: "bytes32" },
+      { name: "priceUsdCents", type: "uint256", internalType: "uint256" },
+      { name: "initialOwner", type: "address", internalType: "address" },
+    ],
+    stateMutability: "nonpayable",
+  },
+  { type: "receive", stateMutability: "payable" },
+  {
+    type: "function",
+    name: "MAX_PRICE_AGE_SECS",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "MON_USD_PRICE_ID",
+    inputs: [],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "PRICE_USD_CENTS",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "PYTH",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "contract IPyth" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getReceipt",
+    inputs: [
+      { name: "marketId", type: "bytes32", internalType: "bytes32" },
+      { name: "user", type: "address", internalType: "address" },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        internalType: "struct ReconAccess.Receipt",
+        components: [
+          { name: "amountPaidWei", type: "uint96", internalType: "uint96" },
+          { name: "paidAt", type: "uint40", internalType: "uint40" },
+          { name: "paid", type: "bool", internalType: "bool" },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "hasAccess",
+    inputs: [
+      { name: "marketId", type: "bytes32", internalType: "bytes32" },
+      { name: "user", type: "address", internalType: "address" },
+    ],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "owner",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "payForAccess",
+    inputs: [
+      { name: "marketId", type: "bytes32", internalType: "bytes32" },
+      { name: "priceUpdateData", type: "bytes[]", internalType: "bytes[]" },
+    ],
+    outputs: [],
+    stateMutability: "payable",
+  },
+  {
+    type: "function",
+    name: "renounceOwnership",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "requiredMonWei",
+    inputs: [
+      { name: "usdCents", type: "uint256", internalType: "uint256" },
+      { name: "monUsdPrice", type: "int64", internalType: "int64" },
+      { name: "expo", type: "int32", internalType: "int32" },
+    ],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "pure",
+  },
+  {
+    type: "function",
+    name: "transferOwnership",
+    inputs: [{ name: "newOwner", type: "address", internalType: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "withdraw",
+    inputs: [
+      { name: "to", type: "address", internalType: "address payable" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "event",
+    name: "AccessPaid",
+    inputs: [
+      { name: "marketId", type: "bytes32", indexed: true, internalType: "bytes32" },
+      { name: "user", type: "address", indexed: true, internalType: "address" },
+      { name: "amountPaidWei", type: "uint256", indexed: false, internalType: "uint256" },
+      { name: "monUsdPrice", type: "int64", indexed: false, internalType: "int64" },
+      { name: "monUsdExpo", type: "int32", indexed: false, internalType: "int32" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "OwnershipTransferred",
+    inputs: [
+      { name: "previousOwner", type: "address", indexed: true, internalType: "address" },
+      { name: "newOwner", type: "address", indexed: true, internalType: "address" },
+    ],
+    anonymous: false,
+  },
+  { type: "error", name: "AlreadyPaid", inputs: [] },
+  {
+    type: "error",
+    name: "AmountTooLarge",
+    inputs: [{ name: "amount", type: "uint256", internalType: "uint256" }],
+  },
+  {
+    type: "error",
+    name: "InsufficientPayment",
+    inputs: [
+      { name: "required", type: "uint256", internalType: "uint256" },
+      { name: "sent", type: "uint256", internalType: "uint256" },
+    ],
+  },
+  { type: "error", name: "InvalidPrice", inputs: [] },
+  {
+    type: "error",
+    name: "OwnableInvalidOwner",
+    inputs: [{ name: "owner", type: "address", internalType: "address" }],
+  },
+  {
+    type: "error",
+    name: "OwnableUnauthorizedAccount",
+    inputs: [{ name: "account", type: "address", internalType: "address" }],
+  },
+] as const;

@@ -20,12 +20,20 @@ contract ReconAccess is Ownable {
     /// guard in payForAccess all resolve to one cold SLOAD/SSTORE per (marketId, user).
     mapping(bytes32 => mapping(address => Receipt)) private _receipts;
 
-    IPyth public immutable PYTH;
+    /// @dev Not immutable — owner-settable via setPythContract. Pyth's own EVM contracts
+    /// go through periodic upgrades (e.g. a scheduled Aug 18, 2026 upgrade on Monad
+    /// testnet); pointing at a stale address fails price updates with a Wormhole
+    /// "invalid guardian set" error, so this needs to be updatable without redeploying.
+    IPyth public PYTH;
     bytes32 public immutable MON_USD_PRICE_ID;
-    uint256 public immutable PRICE_USD_CENTS;
+    /// @dev Not immutable — owner-settable via setPriceUsdCents, e.g. to adjust for
+    /// testnet MON scarcity without redeploying (and losing every existing receipt).
+    uint256 public PRICE_USD_CENTS;
     uint256 public constant MAX_PRICE_AGE_SECS = 60;
 
     event AccessPaid(bytes32 indexed marketId, address indexed user, uint256 amountPaidWei, int64 monUsdPrice, int32 monUsdExpo);
+    event PriceUpdated(uint256 oldPriceUsdCents, uint256 newPriceUsdCents);
+    event PythContractUpdated(address oldPyth, address newPyth);
 
     error AlreadyPaid();
     error InsufficientPayment(uint256 required, uint256 sent);
@@ -88,6 +96,20 @@ contract ReconAccess is Ownable {
         // forge-lint: disable-next-line(unsafe-typecast)
         uint32 negExpo = uint32(uint256(-int256(expo))); // safe: |int32| fits in uint32
         return (usdCents * 1e16 * (10 ** negExpo)) / price;
+    }
+
+    /// @notice Updates the unlock price. Owner-only so it can be tuned (e.g. for
+    /// testnet MON scarcity) without redeploying and losing every existing receipt.
+    function setPriceUsdCents(uint256 newPriceUsdCents) external onlyOwner {
+        emit PriceUpdated(PRICE_USD_CENTS, newPriceUsdCents);
+        PRICE_USD_CENTS = newPriceUsdCents;
+    }
+
+    /// @notice Points at a different Pyth contract, e.g. following one of Pyth's own
+    /// EVM contract upgrades. Owner-only.
+    function setPythContract(address newPyth) external onlyOwner {
+        emit PythContractUpdated(address(PYTH), newPyth);
+        PYTH = IPyth(newPyth);
     }
 
     function withdraw(address payable to, uint256 amount) external onlyOwner {

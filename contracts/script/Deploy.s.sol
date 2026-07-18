@@ -10,8 +10,11 @@ import {ReconAccess} from "../src/ReconAccess.sol";
 /// Requires PRICE_USD_CENTS in the environment (no default — the unlock price is a
 /// product decision, not something this script should guess).
 contract Deploy is Script {
-    // Monad testnet Pyth contract (upgraded address, per Pyth's official EVM contract list).
-    address constant PYTH_TESTNET = 0xFC6bd9F9f0c6481c6Af3A7Eb46b296A5B85ed379;
+    // Monad testnet Pyth contract — the "current" (pre-upgrade) address, not the
+    // "upgraded" one Pyth's docs also list. Confirmed live: the upgraded address
+    // rejects real Hermes update data with a Wormhole "invalid guardian set" error
+    // until Pyth's own scheduled Aug 18, 2026 upgrade actually goes live.
+    address constant PYTH_TESTNET = 0x2880aB155794e7179c9eE2e38200202908C17B43;
     // MON/USD price feed id, Pyth Stable channel (matches PYTH_TESTNET's price sources).
     bytes32 constant MON_USD_FEED_ID = 0x31491744e2dbf6df7fcf4ac0820d18a609b49076d45066d3568424e62f686cd1;
 

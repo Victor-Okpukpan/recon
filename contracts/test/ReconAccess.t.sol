@@ -132,5 +132,65 @@ contract ReconAccessTest is Test {
         recon.withdraw(payable(owner), 1 ether);
     }
 
+    function test_SetPriceUsdCents_UpdatesPriceAndAffectsFutureUnlocks() public {
+        recon.setPriceUsdCents(1);
+        assertEq(recon.PRICE_USD_CENTS(), 1);
+
+        bytes[] memory data = _updateData(MON_PRICE, uint64(block.timestamp));
+        uint256 fee = mockPyth.getUpdateFee(data);
+        uint256 required = recon.requiredMonWei(1, MON_PRICE, MON_EXPO);
+        bytes32 marketId = bytes32(uint256(42));
+
+        vm.prank(user);
+        recon.payForAccess{value: fee + required}(marketId, data);
+
+        assertTrue(recon.hasAccess(marketId, user));
+        assertEq(recon.getReceipt(marketId, user).amountPaidWei, required);
+    }
+
+    function test_SetPriceUsdCents_EmitsPriceUpdated() public {
+        vm.expectEmit(true, true, true, true);
+        emit ReconAccess.PriceUpdated(PRICE_USD_CENTS, 1);
+        recon.setPriceUsdCents(1);
+    }
+
+    function test_RevertWhen_SetPriceUsdCents_NotOwner() public {
+        vm.prank(user);
+        vm.expectRevert();
+        recon.setPriceUsdCents(1);
+    }
+
+    function test_SetPythContract_UpdatesPythAndAffectsFutureUnlocks() public {
+        MockPyth newMockPyth = new MockPyth(60, 1 wei);
+        recon.setPythContract(address(newMockPyth));
+        assertEq(address(recon.PYTH()), address(newMockPyth));
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = newMockPyth.createPriceFeedUpdateData(
+            FEED_ID, MON_PRICE, 1000, MON_EXPO, MON_PRICE, 1000, uint64(block.timestamp), uint64(block.timestamp) - 1
+        );
+        uint256 fee = newMockPyth.getUpdateFee(data);
+        uint256 required = recon.requiredMonWei(PRICE_USD_CENTS, MON_PRICE, MON_EXPO);
+        bytes32 marketId = bytes32(uint256(42));
+
+        vm.prank(user);
+        recon.payForAccess{value: fee + required}(marketId, data);
+
+        assertTrue(recon.hasAccess(marketId, user));
+    }
+
+    function test_SetPythContract_EmitsPythContractUpdated() public {
+        address newPyth = address(0xABCD);
+        vm.expectEmit(true, true, true, true);
+        emit ReconAccess.PythContractUpdated(address(mockPyth), newPyth);
+        recon.setPythContract(newPyth);
+    }
+
+    function test_RevertWhen_SetPythContract_NotOwner() public {
+        vm.prank(user);
+        vm.expectRevert();
+        recon.setPythContract(address(0xABCD));
+    }
+
     receive() external payable {}
 }

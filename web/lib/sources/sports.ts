@@ -33,6 +33,10 @@ export interface Injury {
   reason: string;
 }
 
+export interface TeamSearchResult {
+  team: { id: number; name: string; country: string };
+}
+
 function apiFootballKey(): string {
   const key = process.env.API_FOOTBALL_KEY;
   if (!key) {
@@ -70,8 +74,8 @@ export async function getUpcomingFixturesForTeam(teamId: number, next = 1): Prom
   return apiFootballFetch<Fixture>("/fixtures", { team: teamId, next });
 }
 
-/** Historical head-to-head results between two teams. */
-export async function getHeadToHead(teamAId: number, teamBId: number, last = 10): Promise<Fixture[]> {
+/** Historical head-to-head results between two teams. `last` is a paid-tier-only filter — omit it on the free tier. */
+export async function getHeadToHead(teamAId: number, teamBId: number, last?: number): Promise<Fixture[]> {
   return apiFootballFetch<Fixture>("/fixtures/headtohead", { h2h: `${teamAId}-${teamBId}`, last });
 }
 
@@ -83,4 +87,10 @@ export async function getInjuriesForFixture(fixtureId: number): Promise<Injury[]
 /** Injuries for a team in a season, used when no single fixture ID is known yet. */
 export async function getInjuriesForTeam(teamId: number, season: number): Promise<Injury[]> {
   return apiFootballFetch<Injury>("/injuries", { team: teamId, season });
+}
+
+/** Resolves a team name (as commonly known, e.g. from a market question) to an API-Football team id. */
+export async function searchTeam(name: string): Promise<TeamSearchResult["team"] | null> {
+  const results = await apiFootballFetch<TeamSearchResult>("/teams", { search: name });
+  return results[0]?.team ?? null;
 }
