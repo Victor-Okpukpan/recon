@@ -2,11 +2,11 @@
 
 Recon is a research assistant that sits in front of a Polymarket market. Before
 committing capital, Recon surfaces current, relevant sources on the underlying
-question (sports or politics), generates an AI summary of what those sources say,
-and explicitly says when evidence is too thin to support a conclusion. Full-depth
-research unlocks per market through a small onchain payment on Monad testnet — that
-payment gate is the project's onchain component for the Monad Spark hackathon
-(BuildAnything track).
+question — any category Polymarket lists, not just politics or sports — generates
+an AI summary of what those sources say, and explicitly says when evidence is too
+thin to support a conclusion. Full-depth research unlocks per market through a small
+onchain payment on Monad testnet — that payment gate is the project's onchain
+component for the Monad Spark hackathon (BuildAnything track).
 
 ## Problem
 
@@ -30,7 +30,9 @@ the live rate via a Pyth pull-oracle update.
 
 ## How it works
 
-1. Browse live Polymarket markets (Politics or Sports), or open one directly.
+1. Browse every live Polymarket market — filter pills are computed live from
+   whatever tags are actually trending in the current batch (never a hardcoded
+   category list), or open a market directly.
 2. **Recon Sources** resolves current material on the market's question — API-Football
    for sports (injuries, head-to-head, fixtures), Exa news search for everything
    else — and returns a free preview: source count plus a Sufficient/Inconclusive

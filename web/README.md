@@ -1,14 +1,17 @@
 # Recon — Web
 
-The Next.js frontend for Recon: browse Polymarket markets, preview free source
+The Next.js frontend for Recon: browse any Polymarket market, preview free source
 counts, and unlock a full AI-generated research Digest per market by paying
 through an onchain gate on Monad testnet.
 
 ## What lives here
 
 - **Market browsing** (`app/markets`, `app/market/[id]`) — reads Polymarket's public
-  CLOB REST API directly (no SDK — see `lib/polymarket/client.ts` for why), scoped to
-  Politics and Sports markets.
+  CLOB REST API directly (no SDK — see `lib/polymarket/client.ts` for why). Every
+  category Polymarket has is browsable; the category filter pills are computed live
+  from whatever tags are actually most frequent in the currently-fetched markets, not
+  a hardcoded list (Polymarket's tags mix genuine categories with hundreds of narrow
+  sub-tags at no fixed taxonomy level, so there's nothing authoritative to hardcode).
 - **Recon Sources / Recon Digest** (`lib/sources`, `lib/digest`) — resolves current
   news for a market (API-Football for sports, Exa for everything else), extracts
   claims, checks cross-source consistency, and produces a plain-language summary plus
@@ -66,6 +69,23 @@ npm run dev        # dev server (Turbopack)
   a plain `waitForTransactionReceipt` call, not Monad's `useWriteContractSync`
   extension — the sync variant's custom RPC method isn't implemented by Privy's
   embedded-wallet transport, so its promise never resolves.
-- The Digest (including "Recon's read") is cached per market for 15 minutes
-  (`lib/digest/getMarketDigest.ts`), sources separately for 5 — revisiting the same
-  market repeatedly within that window shows the same result, not a live recompute.
+- `lib/net.ts` sets Node's DNS resolution to prefer IPv4 (`dns.setDefaultResultOrder`)
+  process-wide. Some sandboxed/dev environments have an unreliable outbound IPv6
+  route; Node's fetch tries IPv6 first by default and can hang or fail outright when
+  it's down, while tools like `curl` (which prefer IPv4) don't show the problem. Every
+  external HTTP call in this app (Polymarket, Exa, API-Football, Anthropic) goes
+  through this fix. This is a process-wide setting — it needs an actual dev-server
+  restart to take effect if changed, not just a file save.
+- `lib/anthropicClient.ts` is a single shared, hardened Claude client used by every
+  Digest step (classification, claim extraction, consistency check, summary, leaning)
+  instead of five separate instances. `describeAnthropicError()` there distinguishes
+  a real "out of API credits" failure from a generic connection error, since the two
+  look similar otherwise but mean very different things.
+- Caching (`lib/cache.ts`) is two-layered: an in-memory `Map` plus a JSON file per key
+  under `.cache/` (gitignored), so a `next dev` restart doesn't throw away an already-
+  computed Digest — a fresh one costs several real Claude API calls. This is local-dev
+  convenience only: a serverless production deployment has no persistent filesystem
+  between invocations, so it silently degrades to in-memory-only there. Current TTLs:
+  market data 1 hour, sources 30 minutes, full Digest (including "Recon's read")
+  2 hours — deliberately generous, since news/market sentiment doesn't meaningfully
+  shift minute-to-minute and recomputing is the expensive part.
