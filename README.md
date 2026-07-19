@@ -19,7 +19,7 @@ Recon automates that research step per market: pull current sources, extract dis
 1. Browse every live Polymarket market — filter pills are computed live from whatever tags are actually trending in the current batch (never a hardcoded category list), or open a market directly.
 2. **Recon Sources** resolves current material on the market's question — API-Football for sports (injuries, head-to-head, fixtures), Exa news search for everything else — and returns a free preview: source count plus a Sufficient/Inconclusive state. No payment required to see this much.
 3. Connect a wallet (Privy — email, social login, or an external wallet) and pay `payForAccess(marketId)` on `ReconAccess`.
-4. **Recon Digest** unlocks: a plain-language summary, per-claim source attribution, cross-source contradiction flags, and "Recon's read" — an AI-derived outcome lean with a confidence level, always paired with a hardcoded "not financial advice" disclaimer.
+4. **Recon Digest** unlocks: a plain-language summary, per-claim source attribution, cross-source contradiction flags, and "Recon's read" — an AI-derived outcome lean with a confidence level, always paired with a hardcoded "not financial advice" disclaimer. This isn't instant — it's several sequential Claude calls run fresh on first unlock, so expect at least ~30 seconds (longer for a market with a lot of source material) before it appears. Once computed it's cached, so revisiting the same market is fast.
 5. **My Sessions** lists markets a wallet has unlocked, re-verified against the real onchain `hasAccess()` check every time — never trusted from a client-side flag.
 
 ## Repo layout
